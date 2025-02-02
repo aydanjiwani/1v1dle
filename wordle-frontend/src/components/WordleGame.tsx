@@ -10,8 +10,10 @@ const WordleGame: React.FC = () => {
   const [gameCompleted, setGameCompleted] = useState(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [cooldown, setCooldown] = useState(false);
-  const [availableGames, setAvailableGames] = useState<{ id: string; players: number }[]>([]);
+  const [availableGames, setAvailableGames] = useState<{ id: string; name: string; players: number }[]>([]);
   const [joiningGame, setJoiningGame] = useState(false);
+  const [showGameNameInput, setShowGameNameInput] = useState(false);
+  const [gameName, setGameName] = useState("");
 
   useEffect(() => {
     if (!joiningGame) return;
@@ -23,9 +25,16 @@ const WordleGame: React.FC = () => {
   }, [joiningGame]);
 
   const startGame = async () => {
-    const response = await fetch(`${API_URL}/start`, { method: "POST" });
+    if (!gameName) return;
+
+    const response = await fetch(`${API_URL}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ game_name: gameName }),
+    });
     const data = await response.json();
     setGameId(data.game_id);
+    setShowGameNameInput(false);
   };
 
   const joinGame = (selectedGameId: string) => {
@@ -68,24 +77,45 @@ const WordleGame: React.FC = () => {
 
   return (
     <div style={containerStyle}>
-      <h1 style={{ textAlign: "center", marginBottom: "20px" }}>Multiplayer Wordle</h1>
+      <h1 style={{ textAlign: "center", marginBottom: "10px", fontSize: "2.5rem", color: "#2c3e50" }}>
+        Multiplayer Wordle
+      </h1>
 
       {!gameId ? (
         <div>
-          <button onClick={startGame} style={buttonStyle}>Start Game</button>
-          <button onClick={() => setJoiningGame(true)} style={buttonStyle}>Join Game</button>
+          <button onClick={() => setShowGameNameInput(true)} style={buttonStyle}>
+            Start Game
+          </button>
+          <button onClick={() => setJoiningGame(true)} style={buttonStyle}>
+            Join Game
+          </button>
+
+          {showGameNameInput && (
+            <div style={{ marginTop: "20px", textAlign: "center" }}>
+              <input
+                type="text"
+                placeholder="Enter game name"
+                value={gameName}
+                onChange={(e) => setGameName(e.target.value)}
+                style={inputStyle}
+              />
+              <button onClick={startGame} style={buttonStyle}>
+                Create Game
+              </button>
+            </div>
+          )}
 
           {joiningGame && (
-            <div style={{ marginTop: "20px" }}>
+            <div style={{ marginTop: "20px", textAlign: "center" }}>
               <h2>Available Games</h2>
               {availableGames.length > 0 ? (
                 availableGames.map((game) => (
                   <button
                     key={game.id}
                     onClick={() => joinGame(game.id)}
-                    style={{ ...buttonStyle, display: "block", margin: "5px auto" }}
+                    style={{ ...buttonStyle, display: "block", margin: "10px auto" }}
                   >
-                    Game {game.id} - {game.players} players
+                    {game.name} - {game.players} players
                   </button>
                 ))
               ) : (
@@ -145,6 +175,8 @@ const containerStyle = {
   alignItems: "center",
   justifyContent: "center",
   height: "100vh",
+  padding: "20px",
+  backgroundColor: "#f7f7f7",
 };
 
 const gameAreaStyle = {
@@ -153,21 +185,7 @@ const gameAreaStyle = {
   alignItems: "center",
   width: "100%",
   maxWidth: "400px",
-};
-
-const buttonStyle = {
-  padding: "10px 20px",
-  margin: "10px",
-  fontSize: "16px",
-  cursor: "pointer",
-};
-
-const inputStyle = {
-  fontSize: "24px",
-  textTransform: "uppercase",
-  textAlign: "center",
-  width: "120px",
-  marginRight: "10px",
+  color: "#2c3e50",
 };
 
 const tileStyle = {
@@ -180,6 +198,29 @@ const tileStyle = {
   fontSize: "20px",
   fontWeight: "bold",
   color: "white",
+  borderRadius: "5px",
+};
+
+const buttonStyle = {
+  padding: "10px 20px",
+  margin: "10px",
+  fontSize: "16px",
+  cursor: "pointer",
+  backgroundColor: "#3498db",
+  color: "white",
+  border: "none",
+  borderRadius: "5px",
+};
+
+const inputStyle = {
+  fontSize: "24px",
+  textTransform: "uppercase",
+  textAlign: "center",
+  width: "120px",
+  marginRight: "10px",
+  padding: "10px",
+  borderRadius: "5px",
+  border: "1px solid #ccc",
 };
 
 export default WordleGame;
