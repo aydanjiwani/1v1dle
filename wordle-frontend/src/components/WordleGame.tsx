@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const API_URL = "http://localhost:8080";
 
 const WordleGame: React.FC = () => {
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
-  const [wordGuess, setWordGuess] = useState("");
-  const [guesses, setGuesses] = useState<{ player: number; word: string; result: string }[]>([]);
+  const [wordGuess, setWordGuess] = useState<string[]>(Array(5).fill("")); // Array for 5 letters
+  const [guesses, setGuesses] = useState<{ player: string; word: string; result: string }[]>([]);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [cooldown, setCooldown] = useState(false);
@@ -14,6 +14,7 @@ const WordleGame: React.FC = () => {
   const [joiningGame, setJoiningGame] = useState(false);
   const [showGameNameInput, setShowGameNameInput] = useState(false);
   const [gameName, setGameName] = useState("");
+  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(5).fill(null)); // Refs for each input box
 
   useEffect(() => {
     if (!joiningGame) return;
@@ -49,14 +50,21 @@ const WordleGame: React.FC = () => {
     ws.onopen = () => {
       ws.send(JSON.stringify({ game_id: gameId }));
     };
+    ws.onclose = () => {
+      console.log("wtf");
+    };
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log(data)
       if (data.player_number !== undefined) setPlayerNumber(data.player_number);
       if (data.guesses) setGuesses(data.guesses);
       if (data.completed) setGameCompleted(data.completed);
 
-      // After receiving feedback, start cooldown only for the current player
-      if (data.guesses.length > 0 && data.guesses[data.guesses.length - 1].player === playerNumber) {
+      // Apply cooldown only for the current player
+      if (
+        data.guesses.length > 0 &&
+        data.guesses[data.guesses.length - 1].player === playerNumber
+      ) {
         setCooldown(true);
         setTimeout(() => setCooldown(false), 2000);
       }
@@ -68,11 +76,54 @@ const WordleGame: React.FC = () => {
     };
   }, [gameId]);
 
-  const submitGuess = () => {
-    if (!socket || gameCompleted || cooldown || wordGuess.length !== 5) return;
 
-    socket.send(JSON.stringify({ word: wordGuess }));
-    setWordGuess("");
+  useEffect(() => {
+    console.log("neweffect")
+    if (guesses.length === 0) return;
+    
+    const lastGuess = guesses[guesses.length - 1];
+    const lastGuessPlayerNumber = parseInt(lastGuess.player.replace("Player ", ""), 10);
+    if (playerNumber === lastGuessPlayerNumber) {
+      console.log("should cd")
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 2000);
+    }
+  }, [guesses, playerNumber]);
+
+  const submitGuess = () => {
+    if (!socket || gameCompleted || cooldown || wordGuess.some((letter) => letter === "")) return;
+
+    const guess = wordGuess.join("").toLowerCase();
+    console.log(guess)
+    socket.send(JSON.stringify({ word: guess }));
+    setWordGuess(Array(5).fill(""));
+    if (inputRefs.current[0]) inputRefs.current[0].focus();
+  };
+
+
+  const handleInputChange = (index: number, value: string) => {
+    const newWordGuess = [...wordGuess];
+    newWordGuess[index] = value.toUpperCase();
+    setWordGuess(newWordGuess);
+
+
+    if (value && index < 4 && inputRefs.current[index + 1]) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !wordGuess[index] && index > 0 && inputRefs.current[index - 1]) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      submitGuess();
+    }
   };
 
   return (
@@ -129,19 +180,6 @@ const WordleGame: React.FC = () => {
       ) : (
         <div style={gameAreaStyle}>
           <h2>You are Player {playerNumber}</h2>
-          <div>
-            <input
-              type="text"
-              value={wordGuess}
-              onChange={(e) => setWordGuess(e.target.value.toUpperCase())}
-              maxLength={5}
-              style={inputStyle}
-              disabled={cooldown}
-            />
-            <button onClick={submitGuess} disabled={cooldown || wordGuess.length !== 5} style={buttonStyle}>
-              Submit
-            </button>
-          </div>
           <div style={{ marginTop: "20px" }}>
             {guesses.map((guess, index) => (
               <div key={index} style={{ display: "flex", justifyContent: "center", marginBottom: "5px" }}>
@@ -161,6 +199,25 @@ const WordleGame: React.FC = () => {
               </div>
             ))}
           </div>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+            {wordGuess.map((letter, index) => (
+              <input
+                key={index}
+                type="text"
+                value={letter}
+                onChange={(e) => handleInputChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onKeyPress={handleKeyPress}
+                maxLength={1}
+                style={{ ...tileStyle, textAlign: "center", margin: "3px" }}
+                disabled={cooldown}
+                ref={(el) => (inputRefs.current[index] = el)}
+              />
+            ))}
+          </div>
+          <button onClick={submitGuess} disabled={cooldown || wordGuess.some((letter) => letter === "")} style={buttonStyle}>
+            Submit
+          </button>
           {gameCompleted && <h2>Game Over!</h2>}
         </div>
       )}
@@ -168,15 +225,16 @@ const WordleGame: React.FC = () => {
   );
 };
 
-// Styles
+
 const containerStyle = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  justifyContent: "center",
-  height: "100vh",
+  justifyContent: "flex-start",
+  minHeight: "100vh",
   padding: "20px",
   backgroundColor: "#f7f7f7",
+  fontFamily: "Arial, sans-serif",
 };
 
 const gameAreaStyle = {
@@ -186,19 +244,6 @@ const gameAreaStyle = {
   width: "100%",
   maxWidth: "400px",
   color: "#2c3e50",
-};
-
-const tileStyle = {
-  width: "40px",
-  height: "40px",
-  margin: "3px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "20px",
-  fontWeight: "bold",
-  color: "white",
-  borderRadius: "5px",
 };
 
 const buttonStyle = {
@@ -215,10 +260,22 @@ const buttonStyle = {
 const inputStyle = {
   fontSize: "24px",
   textTransform: "uppercase",
-  textAlign: "center",
   width: "120px",
   marginRight: "10px",
   padding: "10px",
+  borderRadius: "5px",
+  border: "1px solid #ccc",
+};
+
+const tileStyle = {
+  width: "40px",
+  height: "40px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "20px",
+  fontWeight: "bold",
+  color: "white",
   borderRadius: "5px",
   border: "1px solid #ccc",
 };

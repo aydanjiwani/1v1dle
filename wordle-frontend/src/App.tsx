@@ -15,20 +15,20 @@ const appStyle = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  justifyContent: "flex-start", // Align content to the top
-  minHeight: "100vh", // Ensure the content takes up at least the full viewport height
-  width: "100vw", // Ensure the div takes up the full width of the page
-  padding: "20px", // Add padding to avoid content touching the edges
-  backgroundColor: "#f7f7f7", // Light background color
-  fontFamily: "Arial, sans-serif", // Use a clean font
-  boxSizing: "border-box", // Ensure padding is included in the width/height
+  justifyContent: "flex-start",
+  minHeight: "100vh",
+  width: "100vw",
+  padding: "20px",
+  backgroundColor: "#f7f7f7",
+  fontFamily: "Arial, sans-serif",
+  boxSizing: "border-box",
 };
 
 const titleStyle = {
   textAlign: "center",
-  marginBottom: "20px", // Reduce the gap between the title and the game
+  marginBottom: "20px",
   fontSize: "2.5rem",
-  color: "#2c3e50", // Darker color for better contrast
+  color: "#2c3e50",
 };
 
 export default App;
