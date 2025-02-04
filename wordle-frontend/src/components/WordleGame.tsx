@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { CSSProperties } from 'react';
 
-const API_URL = "http://localhost:8080";
+const API_URL = process.env.NODE_ENV === 'production'
+  ? 'https://onev1dle.onrender.com'
+  : 'http://localhost:8080';
 
 const WordleGame: React.FC = () => {
   const [gameId, setGameId] = useState<string | null>(null);
@@ -226,7 +229,7 @@ const WordleGame: React.FC = () => {
 };
 
 
-const containerStyle = {
+const containerStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -237,7 +240,7 @@ const containerStyle = {
   fontFamily: "Arial, sans-serif",
 };
 
-const gameAreaStyle = {
+const gameAreaStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -246,7 +249,7 @@ const gameAreaStyle = {
   color: "#2c3e50",
 };
 
-const buttonStyle = {
+const buttonStyle: CSSProperties = {
   padding: "10px 20px",
   margin: "10px",
   fontSize: "16px",
@@ -257,7 +260,7 @@ const buttonStyle = {
   borderRadius: "5px",
 };
 
-const inputStyle = {
+const inputStyle: CSSProperties = {
   fontSize: "24px",
   textTransform: "uppercase",
   width: "120px",
@@ -267,7 +270,7 @@ const inputStyle = {
   border: "1px solid #ccc",
 };
 
-const tileStyle = {
+const tileStyle: CSSProperties = {
   width: "40px",
   height: "40px",
   display: "flex",

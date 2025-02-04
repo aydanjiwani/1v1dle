@@ -1,5 +1,6 @@
 import React from "react";
 import WordleGame from "./components/WordleGame";
+import { CSSProperties } from 'react';
 
 const App: React.FC = () => {
   return (
@@ -11,7 +12,7 @@ const App: React.FC = () => {
 };
 
 // Styles
-const appStyle = {
+const appStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -24,7 +25,7 @@ const appStyle = {
   boxSizing: "border-box",
 };
 
-const titleStyle = {
+const titleStyle: CSSProperties = {
   textAlign: "center",
   marginBottom: "20px",
   fontSize: "2.5rem",
