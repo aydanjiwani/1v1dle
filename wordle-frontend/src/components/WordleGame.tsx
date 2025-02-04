@@ -145,7 +145,7 @@ const WordleGame: React.FC = () => {
             <div style={{ marginTop: "20px", textAlign: "center" }}>
               <input
                 type="text"
-                placeholder="Enter game name"
+                placeholder=""
                 value={gameName}
                 onChange={(e) => setGameName(e.target.value)}
                 style={inputStyle}
@@ -158,8 +158,8 @@ const WordleGame: React.FC = () => {
 
           {joiningGame && (
             <div style={{ marginTop: "20px", textAlign: "center" }}>
-              <h2>Available Games</h2>
-              {availableGames.length > 0 ? (
+              <h2 style={{ color: "#2c3e50" }}>Available Games</h2>
+              {availableGames && availableGames.length > 0 ? (
                 availableGames.map((game) => (
                   <button
                     key={game.id}
@@ -170,7 +170,7 @@ const WordleGame: React.FC = () => {
                   </button>
                 ))
               ) : (
-                <p>No available games.</p>
+                <p style={{ color: "#2c3e50" }}>No available games.</p>
               )}
             </div>
           )}

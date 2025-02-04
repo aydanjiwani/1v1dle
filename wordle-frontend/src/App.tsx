@@ -4,7 +4,7 @@ import WordleGame from "./components/WordleGame";
 const App: React.FC = () => {
   return (
     <div style={appStyle}>
-      <h1 style={titleStyle}>Welcome to Multiplayer Wordle</h1>
+      <h1 style={titleStyle}>1v1dle</h1>
       <WordleGame />
     </div>
   );

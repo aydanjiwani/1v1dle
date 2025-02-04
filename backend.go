@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -33,13 +35,18 @@ type Guess struct {
 }
 
 type GameServer struct {
-	games map[string]*Game // Map of game IDs to games
-	mu    sync.Mutex       // Mutex to protect concurrent access
+	games        map[string]*Game
+	validGuesses map[string]bool // Store valid words in a map for quick lookup
+	mu           sync.Mutex
 }
 
 func NewGameServer() *GameServer {
+	// Load valid words from file
+	validGuesses := loadValidGuesses("data/valid_guesses.txt")
+
 	return &GameServer{
-		games: make(map[string]*Game),
+		games:        make(map[string]*Game),
+		validGuesses: validGuesses,
 	}
 }
 
@@ -142,20 +149,23 @@ func (gs *GameServer) JoinGame(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 
+			word := strings.ToUpper(guess.Word)
+
+			// Validate the guess
 			gs.mu.Lock()
-			if game.Completed {
+			if game.Completed || !gs.validGuesses[strings.ToLower(guess.Word)] {
 				gs.mu.Unlock()
-				continue
+				continue // Ignore invalid words
 			}
 
-			feedback := calculateFeedback(strings.ToUpper(guess.Word), game.TargetWord)
+			feedback := calculateFeedback(word, game.TargetWord)
 			game.Guesses = append(game.Guesses, Guess{
 				Player: fmt.Sprintf("Player %d", playerNumber),
-				Word:   strings.ToUpper(guess.Word),
+				Word:   word,
 				Result: feedback,
 			})
 
-			if strings.ToUpper(guess.Word) == game.TargetWord {
+			if word == game.TargetWord {
 				game.Completed = true
 			}
 
@@ -165,7 +175,6 @@ func (gs *GameServer) JoinGame(w http.ResponseWriter, r *http.Request) {
 					"completed": game.Completed,
 				})
 			}
-			//time.Sleep(2 * time.Second)  2-second cooldown- moved to frontend
 			gs.mu.Unlock()
 		}
 	}()
@@ -177,6 +186,9 @@ func (gs *GameServer) ListGames(w http.ResponseWriter, r *http.Request) {
 
 	var gamesList []map[string]interface{}
 	for gameID, game := range gs.games {
+		if game.Completed {
+			continue
+		}
 		gamesList = append(gamesList, map[string]interface{}{
 			"id":      gameID,
 			"name":    game.GameName,
@@ -191,15 +203,49 @@ func (gs *GameServer) ListGames(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRandomWord() string {
-	words := []string{
-		"CRANE",
+	words := loadWordsFromFile("data/wordlist.txt")
+	if len(words) == 0 {
+		return "CRANE" // Default word if file reading fails
 	}
 	rand.Seed(time.Now().UnixNano())
-	return words[rand.Intn(len(words))]
+	return strings.ToUpper(words[rand.Intn(len(words))])
+}
+
+func loadWordsFromFile(filename string) []string {
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return nil
+	}
+	defer file.Close()
+
+	var words []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		word := strings.TrimSpace(scanner.Text())
+		if word != "" {
+			words = append(words, word)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading file:", err)
+	}
+
+	return words
+}
+
+func loadValidGuesses(filename string) map[string]bool {
+	words := loadWordsFromFile(filename)
+	validWords := make(map[string]bool)
+	for _, word := range words {
+		validWords[strings.ToLower(word)] = true
+	}
+	return validWords
 }
 
 func enableCORS(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:5173")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 }
@@ -208,12 +254,10 @@ func enableCORS(w http.ResponseWriter) {
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enableCORS(w)
-
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		next(w, r)
 	}
 }
